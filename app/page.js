@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
+import CountdownTimer from '@/components/CountdownTimer'
+import EntrantTicker from '@/components/EntrantTicker'
 
 export default function HomePage() {
   return (
@@ -24,10 +26,14 @@ export default function HomePage() {
           <p className="text-xl md:text-2xl font-semibold mb-4" style={{ color: '#0f172a' }}>
             Official Prize Claim Headquarters
           </p>
-          <p className="text-base md:text-lg mb-10 max-w-2xl mx-auto" style={{ color: '#1e293b' }}>
+          <p className="text-base md:text-lg mb-6 max-w-2xl mx-auto" style={{ color: '#1e293b' }}>
             Enter our exclusive sweepstakes for a chance to win life-changing cash prizes.
             Winners are selected and notified directly through your personal dashboard.
           </p>
+
+          {/* Countdown Timer */}
+          <CountdownTimer />
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               href="/signup"
@@ -47,6 +53,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Recent Entrant Ticker */}
+      <EntrantTicker />
+
       {/* How it works */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto">
@@ -57,13 +66,9 @@ export default function HomePage() {
             {[
               { n: '1', title: 'Sign Up Free', body: 'Create a free account to enter the PCH Official giveaway. No purchase necessary.' },
               { n: '2', title: 'Wait for Selection', body: 'Our team selects winners. Log into your dashboard to check your status at any time.' },
-              { n: '3', title: 'Claim Your Prize', body: 'If you\'re selected, you\'ll see a claim form on your dashboard. Submit your details to receive your prize.' },
+              { n: '3', title: 'Claim Your Prize', body: "If you're selected, you'll see a claim form on your dashboard. Submit your details to receive your prize." },
             ].map((s) => (
-              <div
-                key={s.n}
-                className="text-center p-8 rounded-2xl border-2"
-                style={{ borderColor: '#FFD700' }}
-              >
+              <div key={s.n} className="text-center p-8 rounded-2xl border-2" style={{ borderColor: '#FFD700' }}>
                 <div
                   className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center text-xl font-black"
                   style={{ backgroundColor: '#0f172a', color: '#FFD700' }}

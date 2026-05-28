@@ -377,42 +377,71 @@ function NotificationsTab() {
 }
 
 /* ── Settings Tab ─────────────────────────────────────── */
+function isoToLocal(iso) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  } catch { return '' }
+}
+
+function localToIso(local) {
+  if (!local) return ''
+  try { return new Date(local).toISOString() } catch { return '' }
+}
+
 function SettingsTab() {
-  const [number, setNumber] = useState('')
+  const [settings, setSettings] = useState({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [savingWa, setSavingWa] = useState(false)
+  const [savingDate, setSavingDate] = useState(false)
+  const [waMsg, setWaMsg] = useState('')
+  const [dateMsg, setDateMsg] = useState('')
 
   useEffect(() => {
-    db('get-whatsapp')
-      .then((d) => setNumber(d.number || ''))
+    db('admin-get-settings')
+      .then((d) => setSettings(d.settings || {}))
       .finally(() => setLoading(false))
   }, [])
 
-  async function save(e) {
+  async function saveWhatsapp(e) {
     e.preventDefault()
-    if (!/^\d+$/.test(number)) { setMsg('❌ Digits only please'); return }
-    setSaving(true)
-    setMsg('')
-    const d = await db('admin-update-whatsapp', { number })
-    setMsg(d.success ? '✅ WhatsApp number updated!' : '❌ Failed to save')
-    setSaving(false)
+    const number = settings.whatsapp_number || ''
+    if (!/^\d+$/.test(number)) { setWaMsg('❌ Digits only please'); return }
+    setSavingWa(true)
+    setWaMsg('')
+    const d = await db('admin-update-settings', { key: 'whatsapp_number', value: number })
+    setWaMsg(d.success ? '✅ Saved!' : '❌ Failed to save')
+    setSavingWa(false)
   }
 
+  async function saveEndDate(e) {
+    e.preventDefault()
+    const iso = localToIso(settings.giveaway_end_date_local || '')
+    if (!iso) { setDateMsg('❌ Invalid date'); return }
+    setSavingDate(true)
+    setDateMsg('')
+    const d = await db('admin-update-settings', { key: 'giveaway_end_date', value: iso })
+    setDateMsg(d.success ? '✅ End date updated!' : '❌ Failed to save')
+    setSavingDate(false)
+  }
+
+  if (loading) return <p className="text-gray-500">Loading…</p>
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border p-6 max-w-lg" style={{ borderColor: '#e2e8f0' }}>
-      <h3 className="font-black text-lg mb-1" style={{ color: '#0f172a' }}>WhatsApp Number</h3>
-      <p className="text-sm text-gray-500 mb-5">
-        Digits only, include country code (e.g. 12025551234). This updates the floating button sitewide.
-      </p>
-      {loading ? (
-        <p className="text-gray-400 text-sm">Loading…</p>
-      ) : (
-        <form onSubmit={save} className="space-y-4">
+    <div className="space-y-6 max-w-lg">
+
+      {/* WhatsApp Number */}
+      <div className="bg-white rounded-2xl shadow-sm border p-6" style={{ borderColor: '#e2e8f0' }}>
+        <h3 className="font-black text-lg mb-1" style={{ color: '#0f172a' }}>WhatsApp Number</h3>
+        <p className="text-sm text-gray-500 mb-5">
+          Digits only, include country code (e.g. 12025551234).
+        </p>
+        <form onSubmit={saveWhatsapp} className="space-y-4">
           <input
             type="text"
-            value={number}
-            onChange={(e) => setNumber(e.target.value.replace(/\D/g, ''))}
+            value={settings.whatsapp_number || ''}
+            onChange={(e) => setSettings((s) => ({ ...s, whatsapp_number: e.target.value.replace(/\D/g, '') }))}
             placeholder="12025551234"
             className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none font-mono"
             style={{ borderColor: '#FFD700' }}
@@ -420,15 +449,43 @@ function SettingsTab() {
           />
           <button
             type="submit"
-            disabled={saving}
+            disabled={savingWa}
             className="px-6 py-2 rounded-lg font-bold text-sm"
-            style={{ backgroundColor: saving ? '#FFC107' : '#FFD700', color: '#0f172a' }}
+            style={{ backgroundColor: savingWa ? '#FFC107' : '#FFD700', color: '#0f172a' }}
           >
-            {saving ? 'Saving…' : 'Save Number'}
+            {savingWa ? 'Saving…' : 'Save Number'}
           </button>
-          {msg && <p className="text-sm font-medium">{msg}</p>}
+          {waMsg && <p className="text-sm font-medium">{waMsg}</p>}
         </form>
-      )}
+      </div>
+
+      {/* Giveaway End Date */}
+      <div className="bg-white rounded-2xl shadow-sm border p-6" style={{ borderColor: '#e2e8f0' }}>
+        <h3 className="font-black text-lg mb-1" style={{ color: '#0f172a' }}>⏰ Giveaway End Date</h3>
+        <p className="text-sm text-gray-500 mb-5">
+          Sets the countdown timer on the homepage. Uses your local timezone.
+        </p>
+        <form onSubmit={saveEndDate} className="space-y-4">
+          <input
+            type="datetime-local"
+            value={settings.giveaway_end_date_local || isoToLocal(settings.giveaway_end_date)}
+            onChange={(e) => setSettings((s) => ({ ...s, giveaway_end_date_local: e.target.value }))}
+            className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none"
+            style={{ borderColor: '#FFD700' }}
+            required
+          />
+          <button
+            type="submit"
+            disabled={savingDate}
+            className="px-6 py-2 rounded-lg font-bold text-sm"
+            style={{ backgroundColor: savingDate ? '#FFC107' : '#FFD700', color: '#0f172a' }}
+          >
+            {savingDate ? 'Saving…' : 'Set End Date'}
+          </button>
+          {dateMsg && <p className="text-sm font-medium">{dateMsg}</p>}
+        </form>
+      </div>
+
     </div>
   )
 }

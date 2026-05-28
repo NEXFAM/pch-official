@@ -24,3 +24,12 @@ body {
 @layer utilities {
   .text-balance { text-wrap: balance; }
 }
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  animation: ticker-scroll 45s linear infinite;
+}
