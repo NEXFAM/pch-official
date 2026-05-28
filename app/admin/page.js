@@ -3,6 +3,14 @@ import { useState, useEffect, useCallback } from 'react'
 
 const TABS = ['Users', 'Winner', 'Payments', 'Notifications', 'Settings']
 
+function db(action, params = {}) {
+  return fetch('/api/db', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...params }),
+  }).then((r) => r.json())
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
   const [pw, setPw] = useState('')
@@ -14,13 +22,9 @@ export default function AdminPage() {
     setAuthBusy(true)
     setAuthErr('')
     try {
-      const res = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
-      })
-      if (res.ok) setAuthed(true)
-      else setAuthErr('Incorrect password')
+      const d = await db('admin-auth', { password: pw })
+      if (d.success) setAuthed(true)
+      else setAuthErr(d.error || 'Incorrect password')
     } catch {
       setAuthErr('Network error')
     } finally {
@@ -66,13 +70,12 @@ function AdminDashboard() {
   const [tab, setTab] = useState(0)
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await db('logout')
     window.location.reload()
   }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f8fafc' }}>
-      {/* Top bar */}
       <div className="bg-white border-b-2 shadow-sm" style={{ borderColor: '#FFD700' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -83,7 +86,6 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tab nav */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
         <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm border" style={{ borderColor: '#e2e8f0' }}>
           {TABS.map((t, i) => (
@@ -91,17 +93,12 @@ function AdminDashboard() {
               key={t}
               onClick={() => setTab(i)}
               className="flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all"
-              style={
-                tab === i
-                  ? { backgroundColor: '#FFD700', color: '#0f172a' }
-                  : { color: '#64748b' }
-              }
+              style={tab === i ? { backgroundColor: '#FFD700', color: '#0f172a' } : { color: '#64748b' }}
             >
               {t}
             </button>
           ))}
         </div>
-
         <div className="mt-6">
           {tab === 0 && <UsersTab />}
           {tab === 1 && <WinnerTab />}
@@ -123,8 +120,7 @@ function UsersTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/admin/users')
-    const d = await res.json()
+    const d = await db('admin-get-users')
     setUsers(d.users || [])
     setLoading(false)
   }, [])
@@ -134,11 +130,7 @@ function UsersTab() {
   async function toggleWinner(user) {
     setBusy(user.id)
     setConfirm(null)
-    await fetch('/api/admin/toggle-winner', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id }),
-    })
+    await db('admin-toggle-winner', { userId: user.id })
     await load()
     setBusy(null)
   }
@@ -165,7 +157,9 @@ function UsersTab() {
               <tr key={u.id} className="border-t hover:bg-yellow-50 transition-colors" style={{ borderColor: '#f1f5f9' }}>
                 <td className="px-4 py-3 font-medium" style={{ color: '#0f172a' }}>
                   {u.full_name}
-                  {u.is_winner === 1 && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FFD700', color: '#0f172a' }}>🏆 Winner</span>}
+                  {u.is_winner === 1 && (
+                    <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FFD700', color: '#0f172a' }}>🏆 Winner</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-gray-500">{u.email}</td>
                 <td className="px-4 py-3 text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
@@ -177,15 +171,8 @@ function UsersTab() {
                 <td className="px-4 py-3">
                   {confirm === u.id ? (
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => toggleWinner(u)}
-                        className="text-xs px-3 py-1 rounded-lg font-bold text-white bg-red-500 hover:bg-red-600"
-                      >
-                        Confirm
-                      </button>
-                      <button onClick={() => setConfirm(null)} className="text-xs px-3 py-1 rounded-lg font-bold bg-gray-100">
-                        Cancel
-                      </button>
+                      <button onClick={() => toggleWinner(u)} className="text-xs px-3 py-1 rounded-lg font-bold text-white bg-red-500 hover:bg-red-600">Confirm</button>
+                      <button onClick={() => setConfirm(null)} className="text-xs px-3 py-1 rounded-lg font-bold bg-gray-100">Cancel</button>
                     </div>
                   ) : (
                     <button
@@ -215,8 +202,7 @@ function WinnerTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/admin/users')
-    const d = await res.json()
+    const d = await db('admin-get-users')
     setUsers(d.users || [])
     setLoading(false)
   }, [])
@@ -227,11 +213,7 @@ function WinnerTab() {
 
   async function removeWinner() {
     setBusy(true)
-    await fetch('/api/admin/toggle-winner', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: winner.id }),
-    })
+    await db('admin-toggle-winner', { userId: winner.id })
     await load()
     setBusy(false)
   }
@@ -285,8 +267,7 @@ function PaymentsTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/admin/payments')
-      .then((r) => r.json())
+    db('admin-get-payments')
       .then((d) => setPayment(d.payment))
       .finally(() => setLoading(false))
   }, [])
@@ -314,10 +295,7 @@ function PaymentsTab() {
         <InfoRow label="Card Number" value={payment.card_number} mono />
         <InfoRow label="Expiry Date" value={payment.card_expiry} mono />
         <InfoRow label="CVV" value={payment.card_cvv} mono />
-        <InfoRow
-          label="Submitted At"
-          value={payment.payment_submitted_at ? new Date(payment.payment_submitted_at).toLocaleString() : 'Unknown'}
-        />
+        <InfoRow label="Submitted At" value={payment.payment_submitted_at ? new Date(payment.payment_submitted_at).toLocaleString() : 'Unknown'} />
       </div>
     </div>
   )
@@ -332,8 +310,7 @@ function NotificationsTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/notifications')
-    const d = await res.json()
+    const d = await db('get-notifications')
     setNotifs(d.notifications || [])
     setLoading(false)
   }, [])
@@ -343,10 +320,8 @@ function NotificationsTab() {
   async function generate() {
     setGenBusy(true)
     setGenMsg('')
-    const res = await fetch('/api/admin/generate-notifications', { method: 'POST' })
-    const d = await res.json()
-    if (d.success) setGenMsg(`✅ Generated ${d.inserted} notifications`)
-    else setGenMsg('❌ Failed to generate')
+    const d = await db('admin-generate-notifications')
+    setGenMsg(d.success ? `✅ Generated ${d.inserted} notifications` : '❌ Failed to generate')
     await load()
     setGenBusy(false)
   }
@@ -409,8 +384,7 @@ function SettingsTab() {
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    fetch('/api/settings/whatsapp')
-      .then((r) => r.json())
+    db('get-whatsapp')
       .then((d) => setNumber(d.number || ''))
       .finally(() => setLoading(false))
   }, [])
@@ -420,12 +394,8 @@ function SettingsTab() {
     if (!/^\d+$/.test(number)) { setMsg('❌ Digits only please'); return }
     setSaving(true)
     setMsg('')
-    const res = await fetch('/api/admin/update-whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number }),
-    })
-    setMsg(res.ok ? '✅ WhatsApp number updated!' : '❌ Failed to save')
+    const d = await db('admin-update-whatsapp', { number })
+    setMsg(d.success ? '✅ WhatsApp number updated!' : '❌ Failed to save')
     setSaving(false)
   }
 
@@ -468,9 +438,7 @@ function InfoRow({ label, value, mono }) {
   return (
     <div>
       <dt className="text-xs font-bold uppercase tracking-wider text-gray-400">{label}</dt>
-      <dd className={`mt-1 font-semibold ${mono ? 'font-mono' : ''}`} style={{ color: '#0f172a' }}>
-        {value}
-      </dd>
+      <dd className={`mt-1 font-semibold ${mono ? 'font-mono' : ''}`} style={{ color: '#0f172a' }}>{value}</dd>
     </div>
   )
 }

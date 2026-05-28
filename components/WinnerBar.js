@@ -17,7 +17,7 @@ export default function WinnerBar() {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
-    fetch('/api/notifications')
+    fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get-notifications' }) })
       .then((r) => r.json())
       .then((d) => { if (d.notifications?.length) setNotifications(d.notifications) })
       .catch(() => {})

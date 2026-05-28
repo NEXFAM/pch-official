@@ -1,32 +1,44 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { getDb } from '@/lib/db'
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardClient from '@/components/DashboardClient'
 
-export const dynamic = 'force-dynamic'
+export default function DashboardPage() {
+  const router = useRouter()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-export default async function DashboardPage() {
-  const session = await getSession()
-  if (!session?.id) redirect('/login')
+  useEffect(() => {
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get-user' }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) {
+          setUser({
+            ...d.user,
+            is_winner: d.user.is_winner === 1,
+            payment_submitted: d.user.payment_submitted === 1,
+          })
+        } else {
+          router.push('/login')
+        }
+      })
+      .catch(() => router.push('/login'))
+      .finally(() => setLoading(false))
+  }, [router])
 
-  const db = await getDb()
-  const user = db
-    .prepare(
-      `SELECT id, full_name, email, is_winner, winner_at,
-              payment_submitted, payment_submitted_at, created_at
-       FROM users WHERE id = ?`
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Loading…</p>
+      </div>
     )
-    .get(session.id)
+  }
 
-  if (!user) redirect('/login')
+  if (!user) return null
 
-  return (
-    <DashboardClient
-      user={{
-        ...user,
-        is_winner: user.is_winner === 1,
-        payment_submitted: user.payment_submitted === 1,
-      }}
-    />
-  )
+  return <DashboardClient user={user} />
 }

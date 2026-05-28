@@ -9,7 +9,7 @@ export default function Navbar({ user }) {
 
   async function logout() {
     setBusy(true)
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'logout' }) })
     router.push('/')
     router.refresh()
   }

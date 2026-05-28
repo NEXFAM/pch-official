@@ -5,7 +5,7 @@ export default function WhatsAppButton() {
   const [number, setNumber] = useState('1234567890')
 
   useEffect(() => {
-    fetch('/api/settings/whatsapp')
+    fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get-whatsapp' }) })
       .then((r) => r.json())
       .then((d) => { if (d.number) setNumber(d.number) })
       .catch(() => {})

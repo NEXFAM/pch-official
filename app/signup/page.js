@@ -26,10 +26,10 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: form.full_name, email: form.email, password: form.password }),
+        body: JSON.stringify({ action: 'signup', full_name: form.full_name, email: form.email, password: form.password }),
       })
       const d = await res.json()
       if (!res.ok) setError(d.error || 'Signup failed')

