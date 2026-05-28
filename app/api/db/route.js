@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { getDb } from '@/lib/db'
+import { getDb, syncDb } from '@/lib/db'
 import { getSession } from '@/lib/session'
 import { sendWinnerEmail } from '@/lib/email'
 
@@ -302,7 +302,11 @@ export async function POST(request) {
     const { action, ...params } = body
     const handler = actions[action]
     if (!handler) return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
-    return await handler(params)
+    const result = await handler(params)
+    // Await the blob sync BEFORE returning — fire-and-forget is killed
+    // when Vercel freezes the Lambda after the response is sent.
+    await syncDb()
+    return result
   } catch (err) {
     console.error('[/api/db]', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
