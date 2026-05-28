@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 export default function Navbar({ user }) {
   const router = useRouter()
@@ -9,7 +10,7 @@ export default function Navbar({ user }) {
 
   async function logout() {
     setBusy(true)
-    await fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'logout' }) })
+    await apiFetch('logout')
     router.push('/')
     router.refresh()
   }

@@ -1,14 +1,18 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 const TABS = ['Users', 'Winner', 'Payments', 'Notifications', 'Settings']
 
-function db(action, params = {}) {
-  return fetch('/api/db', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...params }),
-  }).then((r) => r.json())
+function TabSkeleton({ rows = 4 }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border p-6 animate-pulse space-y-3" style={{ borderColor: '#e2e8f0' }}>
+      <div className="h-5 w-40 rounded bg-gray-200" />
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-4 rounded bg-gray-100" style={{ width: `${75 + (i % 3) * 10}%` }} />
+      ))}
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -22,7 +26,7 @@ export default function AdminPage() {
     setAuthBusy(true)
     setAuthErr('')
     try {
-      const d = await db('admin-auth', { password: pw })
+      const d = await apiFetch('admin-auth', { password: pw })
       if (d.success) setAuthed(true)
       else setAuthErr(d.error || 'Incorrect password')
     } catch {
@@ -70,7 +74,7 @@ function AdminDashboard() {
   const [tab, setTab] = useState(0)
 
   async function logout() {
-    await db('logout')
+    await apiFetch('logout')
     window.location.reload()
   }
 
@@ -120,7 +124,7 @@ function UsersTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const d = await db('admin-get-users')
+    const d = await apiFetch('admin-get-users')
     setUsers(d.users || [])
     setLoading(false)
   }, [])
@@ -130,12 +134,12 @@ function UsersTab() {
   async function toggleWinner(user) {
     setBusy(user.id)
     setConfirm(null)
-    await db('admin-toggle-winner', { userId: user.id })
+    await apiFetch('admin-toggle-winner', { userId: user.id })
     await load()
     setBusy(null)
   }
 
-  if (loading) return <p className="text-gray-500">Loading users…</p>
+  if (loading) return <TabSkeleton rows={5} />
   if (!users.length) return <p className="text-gray-500">No users registered yet.</p>
 
   return (
@@ -202,7 +206,7 @@ function WinnerTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const d = await db('admin-get-users')
+    const d = await apiFetch('admin-get-users')
     setUsers(d.users || [])
     setLoading(false)
   }, [])
@@ -213,12 +217,12 @@ function WinnerTab() {
 
   async function removeWinner() {
     setBusy(true)
-    await db('admin-toggle-winner', { userId: winner.id })
+    await apiFetch('admin-toggle-winner', { userId: winner.id })
     await load()
     setBusy(false)
   }
 
-  if (loading) return <p className="text-gray-500">Loading…</p>
+  if (loading) return <TabSkeleton rows={3} />
 
   if (!winner) {
     return (
@@ -267,12 +271,12 @@ function PaymentsTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    db('admin-get-payments')
+    apiFetch('admin-get-payments')
       .then((d) => setPayment(d.payment))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <p className="text-gray-500">Loading…</p>
+  if (loading) return <TabSkeleton rows={4} />
 
   if (!payment) {
     return (
@@ -310,7 +314,7 @@ function NotificationsTab() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const d = await db('get-notifications')
+    const d = await apiFetch('get-notifications')
     setNotifs(d.notifications || [])
     setLoading(false)
   }, [])
@@ -320,7 +324,7 @@ function NotificationsTab() {
   async function generate() {
     setGenBusy(true)
     setGenMsg('')
-    const d = await db('admin-generate-notifications')
+    const d = await apiFetch('admin-generate-notifications')
     setGenMsg(d.success ? `✅ Generated ${d.inserted} notifications` : '❌ Failed to generate')
     await load()
     setGenBusy(false)
@@ -342,7 +346,7 @@ function NotificationsTab() {
       </div>
 
       {loading ? (
-        <p className="text-gray-500">Loading…</p>
+        <TabSkeleton rows={4} />
       ) : !notifs.length ? (
         <p className="text-gray-500">No notifications yet. Click Generate above.</p>
       ) : (
@@ -399,7 +403,7 @@ function SettingsTab() {
   const [dateMsg, setDateMsg] = useState('')
 
   useEffect(() => {
-    db('admin-get-settings')
+    apiFetch('admin-get-settings')
       .then((d) => setSettings(d.settings || {}))
       .finally(() => setLoading(false))
   }, [])
@@ -410,7 +414,7 @@ function SettingsTab() {
     if (!/^\d+$/.test(number)) { setWaMsg('❌ Digits only please'); return }
     setSavingWa(true)
     setWaMsg('')
-    const d = await db('admin-update-settings', { key: 'whatsapp_number', value: number })
+    const d = await apiFetch('admin-update-settings', { key: 'whatsapp_number', value: number })
     setWaMsg(d.success ? '✅ Saved!' : '❌ Failed to save')
     setSavingWa(false)
   }
@@ -421,12 +425,12 @@ function SettingsTab() {
     if (!iso) { setDateMsg('❌ Invalid date'); return }
     setSavingDate(true)
     setDateMsg('')
-    const d = await db('admin-update-settings', { key: 'giveaway_end_date', value: iso })
+    const d = await apiFetch('admin-update-settings', { key: 'giveaway_end_date', value: iso })
     setDateMsg(d.success ? '✅ End date updated!' : '❌ Failed to save')
     setSavingDate(false)
   }
 
-  if (loading) return <p className="text-gray-500">Loading…</p>
+  if (loading) return <TabSkeleton rows={3} />
 
   return (
     <div className="space-y-6 max-w-lg">

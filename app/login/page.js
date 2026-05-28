@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { apiFetch } from '@/lib/apiFetch'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,13 +17,8 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', ...form }),
-      })
-      const d = await res.json()
-      if (!res.ok) setError(d.error || 'Login failed')
+      const d = await apiFetch('login', form)
+      if (d.error) setError(d.error)
       else { router.push('/dashboard'); router.refresh() }
     } catch {
       setError('Network error. Please try again.')

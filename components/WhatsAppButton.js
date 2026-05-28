@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 export default function WhatsAppButton() {
   const [number, setNumber] = useState('1234567890')
 
   useEffect(() => {
-    fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get-whatsapp' }) })
-      .then((r) => r.json())
+    apiFetch('get-whatsapp')
       .then((d) => { if (d.number) setNumber(d.number) })
       .catch(() => {})
   }, [])

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 function timeAgo(dateString) {
   const diff = Date.now() - new Date(dateString).getTime()
@@ -17,8 +18,7 @@ export default function WinnerBar() {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
-    fetch('/api/db', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get-notifications' }) })
-      .then((r) => r.json())
+    apiFetch('get-notifications')
       .then((d) => { if (d.notifications?.length) setNotifications(d.notifications) })
       .catch(() => {})
   }, [])

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 export default function EntrantTicker() {
   const [entrants, setEntrants] = useState([])
@@ -7,12 +8,7 @@ export default function EntrantTicker() {
 
   useEffect(() => {
     function load() {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get-recent-entrants' }),
-      })
-        .then((r) => r.json())
+      apiFetch('get-recent-entrants')
         .then((d) => { if (d.entrants?.length) setEntrants(d.entrants) })
         .catch(() => {})
     }

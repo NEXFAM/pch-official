@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session'
 import { sendWinnerEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
 
 // ── Helpers ───────────────────────────────────────────────────
 function now() { return new Date().toISOString().replace('T', ' ').slice(0, 19) }
@@ -296,6 +297,7 @@ const actions = {
 // ── Main handler ──────────────────────────────────────────────
 export async function POST(request) {
   try {
+    await getDb()
     const body = await request.json()
     const { action, ...params } = body
     const handler = actions[action]

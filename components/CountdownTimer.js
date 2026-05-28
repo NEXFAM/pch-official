@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { apiFetch } from '@/lib/apiFetch'
 
 function calcLeft(iso) {
   const diff = new Date(iso).getTime() - Date.now()
@@ -39,12 +40,7 @@ export default function CountdownTimer() {
   const [left, setLeft] = useState(undefined)
 
   useEffect(() => {
-    fetch('/api/db', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'get-settings' }),
-    })
-      .then((r) => r.json())
+    apiFetch('get-settings')
       .then((d) => { if (d.settings?.giveaway_end_date) setEndDate(d.settings.giveaway_end_date) })
       .catch(() => {})
   }, [])
