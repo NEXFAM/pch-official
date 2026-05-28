@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sql.js'],
@@ -15,3 +15,4 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+
