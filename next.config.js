@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    // Force Vercel to include the sql.js WASM file in every serverless function
+    serverComponentsExternalPackages: ['sql.js'],
     outputFileTracingIncludes: {
       '/**': ['./node_modules/sql.js/dist/**'],
     },
